@@ -1,0 +1,52 @@
+@baseUrl = http://127.0.0.1:1323/api
+
+### GET ALL KELAS
+GET {{baseUrl}}/kelas
+Authorization: Bearer secretkeyaja
+Content-Type: application/json
+
+###
+
+### GET KELAS BY ID
+GET {{baseUrl}}/kelas/2
+Authorization: Bearer secretkeyaja
+Content-Type: application/json
+
+###
+
+### GET JUMLAH KELAS
+GET {{baseUrl}}/kelas/jumlah
+Authorization: Bearer secretkeyaja
+Content-Type: application/json
+
+###
+
+### CREATE KELAS
+POST {{baseUrl}}/kelas
+Authorization: Bearer secretkeyaja
+Content-Type: application/json
+
+{
+  "nama_kelas": "XI TJKT 1",
+  "status": "true"
+}
+
+###
+
+### UPDATE KELAS
+PUT {{baseUrl}}/kelas/4
+Authorization: Bearer secretkeyaja
+Content-Type: application/json
+
+{
+  "id": "4",
+  "nama_kelas": "XI PPLG 4 - Update",
+  "status": "1"
+}
+
+###
+
+### DELETE KELAS
+DELETE {{baseUrl}}/kelas/4
+Authorization: Bearer secretkeyaja
+Content-Type: application/json
