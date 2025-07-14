@@ -1,11 +1,11 @@
-package repository
+package repository_v1
 
 import (
 	"context"
 	"database/sql"
 	"fmt"
 
-	"github.com/muhammadridwansurya/api-go/dto"
+	dto_v1 "github.com/muhammadridwansurya/api-go/dto/v1"
 	"github.com/muhammadridwansurya/api-go/model"
 )
 
@@ -13,8 +13,8 @@ type KelasRepositoryInterface interface {
 	GetJmlKelas(ctx context.Context) (*model.JmlKelas, error)
 	GetKelas(ctx context.Context) ([]model.Kelas, error)
 	GetKelasById(ctx context.Context, kelas_id uint32) (*model.Kelas, error)
-	InsertKelas(ctx context.Context, data *dto.KelasRequest) (*model.Kelas, error)
-	UpdateKelas(ctx context.Context, kelas_id uint32, data *dto.KelasRequest) (*model.Kelas, error)
+	InsertKelas(ctx context.Context, data *dto_v1.KelasRequest) (*model.Kelas, error)
+	UpdateKelas(ctx context.Context, kelas_id uint32, data *dto_v1.KelasRequest) (*model.Kelas, error)
 	DeleteKelas(ctx context.Context, kelas_id uint32) (*model.Kelas, error)
 }
 
@@ -85,7 +85,7 @@ func (r *kelasRepository) GetKelasById(ctx context.Context, kelas_id uint32) (*m
 	return kelas, nil
 }
 
-func (r *kelasRepository) InsertKelas(ctx context.Context, data *dto.KelasRequest) (*model.Kelas, error) {
+func (r *kelasRepository) InsertKelas(ctx context.Context, data *dto_v1.KelasRequest) (*model.Kelas, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -111,7 +111,7 @@ func (r *kelasRepository) InsertKelas(ctx context.Context, data *dto.KelasReques
 	return &kelas, nil
 }
 
-func (r *kelasRepository) UpdateKelas(ctx context.Context, kelas_id uint32, data *dto.KelasRequest) (*model.Kelas, error) {
+func (r *kelasRepository) UpdateKelas(ctx context.Context, kelas_id uint32, data *dto_v1.KelasRequest) (*model.Kelas, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err

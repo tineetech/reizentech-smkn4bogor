@@ -1,24 +1,24 @@
-package controller
+package controller_v1
 
 import (
 	"net/http"
 	"strconv"
 
 	"github.com/labstack/echo/v4"
-	dto "github.com/muhammadridwansurya/api-go/dto"
+	dto_v1 "github.com/muhammadridwansurya/api-go/dto/v1"
 	"github.com/muhammadridwansurya/api-go/helpers"
 	"github.com/muhammadridwansurya/api-go/middlewares"
-	service "github.com/muhammadridwansurya/api-go/service"
+	service_v1 "github.com/muhammadridwansurya/api-go/service/v1"
 )
 
 type KelasController struct {
 	kelasService service.KelasServiceInterface
 }
 
-func InitKelasController(e *echo.Echo, service service.KelasServiceInterface, middleware middlewares.Middlewares) {
-	controller := &KelasController{kelasService: service}
+func InitKelasController(e *echo.Echo, service_v1 service.KelasServiceInterface, middleware middlewares.Middlewares) {
+	controller := &KelasController{kelasService: service_v1}
 
-	route := e.Group("/api/kelas", middleware.KeyApi) // sekalian menerapkan middleware untuk grup ini
+	route := e.Group("/api/v1/kelas", middleware.KeyApi) // sekalian menerapkan middleware untuk grup ini
 	route.GET("", controller.GetKelas)
 	route.GET("/:kelas_id", controller.GetKelasById)
 	route.GET("/jumlah", controller.GetJmlKelas)

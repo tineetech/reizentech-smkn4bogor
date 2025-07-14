@@ -14,7 +14,7 @@ type JmlKelas struct {
 
 type Kelas struct { // Struktur kolom tabel kelas
 	ID        uint32     `json:"id"`
-	NamaKelas string     `json:"nama_kelas"`
+	NamaKelas string     `json:"nama_kelas,unique=kelas.nama_kelas"`
 	Status    string     `json:"status"`
 	CreatedAt *time.Time `json:"created_at,omitempty"`
 	UpdatedAt *time.Time `json:"updated_at,omitempty"`

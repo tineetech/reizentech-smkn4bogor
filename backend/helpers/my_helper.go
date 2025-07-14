@@ -11,44 +11,41 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// HashPassword hashes the password with a unique salt
-func HashPassword(password string) (string, string, error) {
-	// Generate a unique salt
-	salt, err := generateSalt(16) // 16 bytes salt
-	if err != nil {
-		return "", "", fmt.Errorf("failed to generate salt: %w", err)
-	}
-
-	// Combine password and salt
-	saltedPassword := password + salt + os.Getenv("AUTH_SALT")
-
-	// Hash the salted password using bcrypt
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(saltedPassword), bcrypt.DefaultCost)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to hash password: %w", err)
-	}
-
-	// Return the hashed password and salt
-	return string(hashedPassword), salt, nil
+type JWTClaims struct {
+	UserID   string `json:"user_id"`
+	Username string `json:"username"`
+	Role     string `json:"role"`
+	jwt.RegisteredClaims
 }
 
-// generateSalt generates a cryptographically secure random salt
-func generateSalt(length int) (string, error) {
-	bytes := make([]byte, length)
-	if _, err := rand.Read(bytes); err != nil {
-		return "", fmt.Errorf("failed to generate random bytes: %w", err)
-	}
-	return base64.RawStdEncoding.EncodeToString(bytes), nil
+// Hash password
+func HashPassword(password string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	return string(bytes), err
 }
 
-// ComparePassword compares the hashed password with the provided plaintext password and salt
-func ComparePassword(hashedPassword, password, salt string) bool {
-	// Combine password and salt
-	saltedPassword := password + salt + os.Getenv("AUTH_SALT")
-
-	// Compare the hashed password with the salted password
-	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(saltedPassword))
+// Verifikasi password
+func CheckPasswordHash(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	return err == nil
+}
+
+func GenerateJWT(secret string, userID, username, role string, duration time.Duration) (string, error) {
+	claims := JWTClaims{
+		UserID:   userID,
+		Username: username,
+		Role:     role,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(duration)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			NotBefore: jwt.NewNumericDate(time.Now()),
+			Issuer:    "ujian-app",
+			Subject:   userID,
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(secret))
 }
 
 type Response struct {
@@ -128,3 +125,4 @@ func BindAndValidate(ctx echo.Context, request interface{}) error {
 
 	return nil
 }
+

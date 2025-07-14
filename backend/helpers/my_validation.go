@@ -25,6 +25,7 @@ func InitCustomValidation(valRepo repository.ValidationRepositoryInterface) *Cus
 		valRepo:   valRepo,
 	}
 	v.RegisterValidationCtx("unique", customValidator.UniqueValidation)
+	v.RegisterValidationCtx("unique_twoparam", customValidator.UniqueWithTwoParamValidation)
 	v.RegisterValidationCtx("in", customValidator.InValidation)
 	return customValidator
 }
@@ -39,33 +40,53 @@ func (v *CustomValidator) UniqueValidation(ctx context.Context, fl validator.Fie
 	param := fl.Param()          // Contoh: "username.users"
 	value := fl.Field().String() // Value dari field (misal: "john_doe")
 
-	parent := fl.Parent()
-	idField := parent.FieldByName("ID")
-
-	var id uint32 = 0
-	if idField.IsValid() {
-		switch idField.Kind() {
-		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-			id = uint32(idField.Uint())
-		case reflect.String:
-			// kalau id berupa string, bisa parsing
-			idStr := idField.String()
-			if idParsed, err := strconv.ParseUint(idStr, 10, 32); err == nil {
-				id = uint32(idParsed)
-			}
-		}
+	// Pisahkan parameter menjadi field dan table
+	parts := strings.Split(param, ".")
+	table := parts[0]
+	field := parts[1]
+	if len(parts) > 3 {
+		return false // Format parameter salah
 	}
+	var paramField string = ""
+	var paramFieldValue string = ""
+	if len(parts) == 3 {
+		paramField = parts[2]
+		paramFieldValue = fl.Parent().FieldByName(paramField).String()
+	}
+
+	// Panggil repository untuk cek apakah data unique
+	isUnique, err := v.valRepo.IsUnique(ctx, table, field, value, paramField, paramFieldValue)
+	if err != nil {
+		fmt.Println("Error checking uniqueness:", err)
+		return false
+	}
+
+	return isUnique
+}
+
+// UniqueValidation untuk memeriksa apakah nilai sudah ada di database
+func (v *CustomValidator) UniqueWithTwoParamValidation(ctx context.Context, fl validator.FieldLevel) bool {
+	param := fl.Param()           // Contoh: "users.username"
+	value1 := fl.Field().String() // Value dari field (misal: "john_doe")
 
 	// Pisahkan parameter menjadi field dan table
 	parts := strings.Split(param, ".")
-	if len(parts) != 2 {
+	table := parts[0]
+	field1 := parts[1]
+	field2 := parts[2]
+	value2 := fl.Parent().FieldByName(field2).String()
+	if len(parts) > 4 {
 		return false // Format parameter salah
 	}
-	field := parts[0]
-	table := parts[1]
+	var key string = ""
+	var keyValue string = ""
+	if len(parts) == 4 {
+		key = parts[3]
+		keyValue = fl.Parent().FieldByName(key).String()
+	}
 
 	// Panggil repository untuk cek apakah data unique
-	isUnique, err := v.valRepo.IsUnique(ctx, table, field, value, id)
+	isUnique, err := v.valRepo.IsUniqueTwoParam(ctx, table, field1, value1, field2, value2, key, keyValue)
 	if err != nil {
 		fmt.Println("Error checking uniqueness:", err)
 		return false
@@ -128,6 +149,8 @@ func HandleValidationErrors(err error, fieldMap map[string]string) map[string]st
 			errors[jsonField] = fmt.Sprintf("%s sudah digunakan", jsonField)
 		case "in":
 			errors[jsonField] = fmt.Sprintf("%s format tidak valid", jsonField)
+		case "numeric":
+			errors[jsonField] = fmt.Sprintf("%s hanya angka saja", jsonField)
 		case "email":
 			errors[jsonField] = "format email tidak valid"
 		default:

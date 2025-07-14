@@ -1,4 +1,4 @@
-package dto
+package dto_v1
 
 type KelasRequest struct {
 	ID        string `json:"id,omitempty" validate:"required"`
