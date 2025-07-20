@@ -86,8 +86,8 @@ func main() {
 	// Initialize middlewares, repositories, services, and routes
 	middlewrs := middlewares.InitMiddlewares()
 	repo := routes.InitRepositories(db)
-	service := routes.InitServices(repo)
-	routes.InitRoutes(e, *service, *middlewrs)
+	services := routes.InitServices(repo)
+	routes.InitRoutes(e, services, *middlewrs)
 
 	// Start server
 	e.Logger.Fatal(e.Start(":1323"))

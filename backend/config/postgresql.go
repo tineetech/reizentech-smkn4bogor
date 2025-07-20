@@ -19,6 +19,8 @@ func NewPostgresConnection(host, port, user, password, dbname string) (*sql.DB, 
 
 	if err = db.Ping(); err != nil {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
+	} else {
+		fmt.Println("Connected to PostgreSQL database successfully")
 	}
 
 	db.SetMaxOpenConns(50)

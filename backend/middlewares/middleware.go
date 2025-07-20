@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -83,8 +84,11 @@ func InitMiddlewares() *Middlewares {
 	return &Middlewares{
 		KeyApi: AuthKeyMiddleware(os.Getenv("API_KEY")),
 		JWT: echojwt.WithConfig(echojwt.Config{
-			SigningKey:  []byte(os.Getenv("JWT_SECRET")),
+			SigningKey:  []byte(os.Getenv("API_KEYcd ")),
 			TokenLookup: "header:Authorization",
+			NewClaimsFunc: func(c echo.Context) jwt.Claims {
+				return &helpers.JWTClaims{}
+			},
 			ErrorHandler: func(c echo.Context, err error) error {
 				return c.JSON(http.StatusUnauthorized, helpers.BasicResponse(
 					false,

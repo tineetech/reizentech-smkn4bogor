@@ -11,27 +11,31 @@ import (
 )
 
 type Repositories struct {
-	KelasRepository repository.KelasRepositoryInterface
+	AuthRepository repository.AuthRepositoryInterface
+	UserRepository repository.UserRepositoryInterface
 }
 
 type Services struct {
-	KelasService service.KelasServiceInterface
+	AuthService  service.AuthServiceInterface
+	UsersService service.UsersServiceInterface
 }
 
 func InitRepositories(db *sql.DB) *Repositories {
 	return &Repositories{
-		KelasRepository: repository.InitKelasRepository(db),
+		AuthRepository: repository.InitAuthRepository(db),
+		UserRepository: repository.InitUserRepository(db),
 	}
 }
 
 func InitServices(repo *Repositories) *Services {
 	return &Services{
-		KelasService: service.InitKelasService(repo.KelasRepository),
+		AuthService:  service.InitAuthService(repo.AuthRepository),
+		UsersService: service.InitUsersService(repo.UserRepository),
 	}
 }
 
-func InitRoutes(e *echo.Echo, services Services, middleware middlewares.Middlewares) {
+func InitRoutes(e *echo.Echo, svcs *Services, mw middlewares.Middlewares) {
+	controller.InitAuthController(e, svcs.AuthService, mw)
 
-	controller.InitKelasController(e, services.KelasService, middleware)
-
+	controller.InitUsersController(e, svcs.UsersService, mw)
 }
