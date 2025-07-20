@@ -18,7 +18,7 @@ type KelasController struct {
 func InitKelasController(e *echo.Echo, service service.KelasServiceInterface, middleware middlewares.Middlewares) {
 	controller := &KelasController{kelasService: service}
 
-	route := e.Group("/api/kelas", middleware.KeyApi) // sekalian menerapkan middleware untuk grup ini
+	route := e.Group("/api/kelas") // sekalian menerapkan middleware untuk grup ini
 	route.GET("", controller.GetKelas)
 	route.GET("/:kelas_id", controller.GetKelasById)
 	route.GET("/jumlah", controller.GetJmlKelas)
