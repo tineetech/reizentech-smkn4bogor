@@ -30,7 +30,7 @@ func initLogFile(fileName string) *os.File {
 }
 
 func initDatabase() *sql.DB {
-	db, err := config.NewPostgresConnection(
+	db, err := config.NewMySQLConnection(
 		os.Getenv("DB_HOST"),
 		os.Getenv("DB_PORT"),
 		os.Getenv("DB_USER"),
