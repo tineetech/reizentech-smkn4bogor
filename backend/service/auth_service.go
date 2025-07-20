@@ -3,10 +3,13 @@ package service
 import (
 	"context"
 	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5" // ganti versi/driver sesuai kebutuhan
 	dto "github.com/muhammadridwansurya/api-go/dto"
+	"github.com/muhammadridwansurya/api-go/helpers"
 	"github.com/muhammadridwansurya/api-go/model"
 	repo "github.com/muhammadridwansurya/api-go/repository"
 )
@@ -15,9 +18,9 @@ import (
 // Konfigurasi JWT sederhana.
 // Idealnya secret & expiry di‑inject via env / config.
 // -------------------------------------------------------------------
+
 const (
-	jwtSecretKey       = "CHANGE_THIS_SECRET" // TODO: ambil dari ENV
-	jwtExpiryInMinutes = 60
+	jwtExpiryInMinutes = 60 // ✅ bisa jadi const atau var
 )
 
 // -------------------------------------------------------------------
@@ -92,13 +95,36 @@ func (s *authService) GetProfile(ctx context.Context, userID string) (*model.Use
 // -------------------------------------------------------------------
 // Helper: JWT generator
 // -------------------------------------------------------------------
+
 func generateJWT(userID string) (string, error) {
 	now := time.Now()
-	claims := jwt.MapClaims{
-		"user_id": userID,
-		"exp":     now.Add(time.Minute * jwtExpiryInMinutes).Unix(),
-		"iat":     now.Unix(),
+
+	claims := helpers.JWTClaims{
+		UserID: userID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(now.Add(time.Minute * jwtExpiryInMinutes)),
+			IssuedAt:  jwt.NewNumericDate(now),
+			NotBefore: jwt.NewNumericDate(now),
+		},
 	}
+
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(jwtSecretKey))
+
+	// Verify the unsigned token looks correct
+	unsignedToken, _ := token.SigningString()
+	fmt.Printf("Unsigned token parts: %v\n", strings.Split(unsignedToken, "."))
+
+	signedToken, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+	if err != nil {
+		return "", fmt.Errorf("failed to sign token: %w", err)
+	}
+
+	// Verify the signed token structure
+	parts := strings.Split(signedToken, ".")
+	if len(parts) != 3 {
+		return "", fmt.Errorf("generated token has %d parts, expected 3", len(parts))
+	}
+
+	fmt.Printf("Generated token: %s\n", signedToken)
+	return signedToken, nil
 }

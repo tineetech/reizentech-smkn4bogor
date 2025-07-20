@@ -1,6 +1,8 @@
 package middlewares
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -19,7 +21,6 @@ type Middlewares struct {
 	JWT    echo.MiddlewareFunc
 }
 
-// RATE LIMITER
 func InitRateLimiterConfig() middleware.RateLimiterConfig {
 	return middleware.RateLimiterConfig{
 		Skipper: middleware.DefaultSkipper,
@@ -48,30 +49,21 @@ func InitRateLimiterConfig() middleware.RateLimiterConfig {
 	}
 }
 
-// Middleware untuk mengecek auth-key
 func AuthKeyMiddleware(apiKey string) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			authHeader := c.Request().Header.Get("Authorization")
+			authHeader := c.Request().Header.Get("X-API-Key")
 			if authHeader == "" {
 				return c.JSON(http.StatusUnauthorized, helpers.BasicResponse(
 					false,
-					"Auth-Key missing",
+					"X-API-Key header missing",
 				))
 			}
 
-			if !strings.HasPrefix(authHeader, "Bearer ") {
+			if authHeader != apiKey {
 				return c.JSON(http.StatusUnauthorized, helpers.BasicResponse(
 					false,
-					"Invalid Auth-Key format",
-				))
-			}
-
-			authKey := authHeader[len("Bearer "):]
-			if authKey != apiKey {
-				return c.JSON(http.StatusUnauthorized, helpers.BasicResponse(
-					false,
-					"Invalid Auth-Key",
+					"Invalid API Key",
 				))
 			}
 
@@ -82,19 +74,63 @@ func AuthKeyMiddleware(apiKey string) echo.MiddlewareFunc {
 
 func InitMiddlewares() *Middlewares {
 	return &Middlewares{
-		KeyApi: AuthKeyMiddleware(os.Getenv("API_KEY")),
-		JWT: echojwt.WithConfig(echojwt.Config{
-			SigningKey:  []byte(os.Getenv("API_KEYcd ")),
-			TokenLookup: "header:Authorization",
-			NewClaimsFunc: func(c echo.Context) jwt.Claims {
-				return &helpers.JWTClaims{}
-			},
-			ErrorHandler: func(c echo.Context, err error) error {
-				return c.JSON(http.StatusUnauthorized, helpers.BasicResponse(
-					false,
-					"Invalid or expired token",
-				))
-			},
-		}),
+		JWT: initJWTMiddleware(),
 	}
+}
+
+func initJWTMiddleware() echo.MiddlewareFunc {
+	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		panic("JWT_SECRET environment variable not set")
+	}
+
+	return echojwt.WithConfig(echojwt.Config{
+		SigningKey:  []byte(secret),
+		TokenLookup: "header:Authorization",
+
+		NewClaimsFunc: func(c echo.Context) jwt.Claims {
+			return &helpers.JWTClaims{}
+		},
+
+		ErrorHandler: func(c echo.Context, err error) error {
+			authHeader := c.Request().Header.Get("Authorization")
+			_ = authHeader
+
+			errorMsg := "Token error"
+			switch {
+			case errors.Is(err, jwt.ErrTokenMalformed):
+				errorMsg = "Token format invalid"
+			case errors.Is(err, jwt.ErrTokenExpired):
+				errorMsg = "Token expired"
+			case errors.Is(err, jwt.ErrTokenNotValidYet):
+				errorMsg = "Token not yet valid"
+			default:
+				errorMsg = fmt.Sprintf("Token error: %v", err)
+			}
+
+			return c.JSON(http.StatusUnauthorized, helpers.BasicResponse(
+				false,
+				errorMsg,
+			))
+		},
+
+		ParseTokenFunc: func(c echo.Context, auth string) (interface{}, error) {
+			if !strings.HasPrefix(auth, "Bearer ") {
+				return nil, fmt.Errorf("missing Bearer prefix")
+			}
+
+			tokenStr := strings.TrimSpace(auth[len("Bearer "):])
+			parts := strings.Split(tokenStr, ".")
+			if len(parts) != 3 {
+				return nil, jwt.ErrTokenMalformed
+			}
+
+			return jwt.ParseWithClaims(tokenStr, &helpers.JWTClaims{}, func(t *jwt.Token) (interface{}, error) {
+				if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+					return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+				}
+				return []byte(secret), nil
+			})
+		},
+	})
 }

@@ -5,7 +5,6 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// Struktur klaim kustom.
 type JWTClaims struct {
 	UserID string `json:"user_id"`
 	jwt.RegisteredClaims
@@ -26,7 +25,6 @@ func GetUserClaims(c echo.Context) *JWTClaims {
 		return cl
 	}
 
-	// 2) Fallback ke MapClaims
 	if mc, ok := token.Claims.(jwt.MapClaims); ok {
 		if id, ok := mc["user_id"].(string); ok {
 			return &JWTClaims{UserID: id}
