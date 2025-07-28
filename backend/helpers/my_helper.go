@@ -1,12 +1,11 @@
 package helpers
 
 import (
-	"crypto/rand"
-	"encoding/base64"
 	"fmt"
-	"os"
 	"reflect"
+	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -125,4 +124,3 @@ func BindAndValidate(ctx echo.Context, request interface{}) error {
 
 	return nil
 }
-

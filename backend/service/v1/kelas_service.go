@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	dto "github.com/muhammadridwansurya/api-go/dto"
+	dto_v1 "github.com/muhammadridwansurya/api-go/dto/v1"
 	"github.com/muhammadridwansurya/api-go/model"
-	repository "github.com/muhammadridwansurya/api-go/repository"
+	repository_v1 "github.com/muhammadridwansurya/api-go/repository/v1"
 )
 
 // service template logika nya aplikasi yg menampilkan berupa pesan
@@ -15,16 +15,16 @@ type KelasServiceInterface interface {
 	GetJumlahKelas(ctx context.Context) (*model.JmlKelas, error)
 	GetDaftarKelas(ctx context.Context) ([]model.Kelas, error)
 	GetKelasById(ctx context.Context, id uint32) (*model.Kelas, error)
-	CreateKelas(ctx context.Context, req *dto.KelasRequest) (*model.Kelas, error)
-	UpdateKelas(ctx context.Context, id uint32, req *dto.KelasRequest) (*model.Kelas, error)
+	CreateKelas(ctx context.Context, req *dto_v1.KelasRequest) (*model.Kelas, error)
+	UpdateKelas(ctx context.Context, id uint32, req *dto_v1.KelasRequest) (*model.Kelas, error)
 	DeleteKelas(ctx context.Context, id uint32) (*model.Kelas, error)
 }
 
 type kelasService struct {
-	repo repository.KelasRepositoryInterface
+	repo repository_v1.KelasRepositoryInterface
 }
 
-func InitKelasService(repo repository.KelasRepositoryInterface) KelasServiceInterface {
+func InitKelasService(repo repository_v1.KelasRepositoryInterface) KelasServiceInterface {
 	return &kelasService{repo: repo}
 }
 
@@ -43,11 +43,11 @@ func (s *kelasService) GetKelasById(ctx context.Context, id uint32) (*model.Kela
 	return s.repo.GetKelasById(ctx, id)
 }
 
-func (s *kelasService) CreateKelas(ctx context.Context, req *dto.KelasRequest) (*model.Kelas, error) {
+func (s *kelasService) CreateKelas(ctx context.Context, req *dto_v1.KelasRequest) (*model.Kelas, error) {
 	return s.repo.InsertKelas(ctx, req)
 }
 
-func (s *kelasService) UpdateKelas(ctx context.Context, id uint32, req *dto.KelasRequest) (*model.Kelas, error) {
+func (s *kelasService) UpdateKelas(ctx context.Context, id uint32, req *dto_v1.KelasRequest) (*model.Kelas, error) {
 	// Contoh Validasi bisa ditambahkan sesuai kebutuhan
 	if id == 0 {
 		return nil, fmt.Errorf("ID tidak valid")

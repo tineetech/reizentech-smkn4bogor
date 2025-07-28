@@ -12,11 +12,11 @@ import (
 )
 
 type KelasController struct {
-	kelasService service.KelasServiceInterface
+	kelasService service_v1.KelasServiceInterface
 }
 
-func InitKelasController(e *echo.Echo, service_v1 service.KelasServiceInterface, middleware middlewares.Middlewares) {
-	controller := &KelasController{kelasService: service_v1}
+func InitKelasController(e *echo.Echo, service service_v1.KelasServiceInterface, middleware middlewares.Middlewares) {
+	controller := &KelasController{kelasService: service}
 
 	route := e.Group("/api/v1/kelas", middleware.KeyApi) // sekalian menerapkan middleware untuk grup ini
 	route.GET("", controller.GetKelas)
@@ -81,7 +81,7 @@ func (c *KelasController) GetJmlKelas(ctx echo.Context) error {
 
 func (c *KelasController) InsertKelas(ctx echo.Context) error {
 	// Bind dan validasi request
-	request := new(dto.KelasRequest)
+	request := new(dto_v1.KelasRequest)
 	if err := helpers.BindAndValidate(ctx, request); err != nil {
 		if validationErr, ok := err.(*helpers.ValidationError); ok {
 			// Jika error adalah ValidationError, kembalikan respons JSON
@@ -120,7 +120,7 @@ func (c *KelasController) UpdateKelas(ctx echo.Context) error {
 		return ctx.JSON(http.StatusBadRequest, helpers.BasicResponse(false, "ID tidak valid"))
 	}
 
-	request := new(dto.KelasRequest)
+	request := new(dto_v1.KelasRequest)
 	if err := helpers.BindAndValidate(ctx, request); err != nil {
 		if validationErr, ok := err.(*helpers.ValidationError); ok {
 			return ctx.JSON(http.StatusBadRequest, helpers.ErrorResponseRequest(false, validationErr.Message, validationErr.Errors))
