@@ -20,6 +20,8 @@ func InitAuthController(e *echo.Echo, svc service.AuthServiceInterface, mw middl
 	public := e.Group("/api/auth")
 	public.POST("/register", ctrl.Register)
 	public.POST("/login", ctrl.Login)
+	public.GET("/verify-email", ctrl.VerifyEmail)
+	public.POST("/verify-email", ctrl.VerifyEmail)
 
 	private := e.Group("/api/auth")
 	private.POST("/logout", ctrl.Logout, mw.JWT)
@@ -90,4 +92,23 @@ func (c *AuthController) Profile(ctx echo.Context) error {
 	}
 
 	return ctx.JSON(http.StatusOK, helpers.SuccessResponseWithData(true, "profil ditemukan", user))
+}
+
+func (c *AuthController) VerifyEmail(ctx echo.Context) error {
+	token := ctx.QueryParam("token")
+	if token == "" {
+		return ctx.JSON(http.StatusBadRequest, helpers.ErrorResponseRequest(false, "Bad Request", map[string]string{
+			"token": "token wajib diisi",
+		}))
+	}
+
+	req := &dto.VerifyEmailRequest{
+		Token: token,
+	}
+
+	if err := c.authService.VerifyEmail(ctx.Request().Context(), req); err != nil {
+		return ctx.JSON(http.StatusBadRequest, helpers.BasicResponse(false, err.Error()))
+	}
+
+	return ctx.JSON(http.StatusOK, helpers.SuccessResponseWithData(true, "email berhasil diverifikasi", nil))
 }

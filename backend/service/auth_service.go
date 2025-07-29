@@ -7,37 +7,24 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5" // ganti versi/driver sesuai kebutuhan
+	"github.com/golang-jwt/jwt/v5"
 	dto "github.com/muhammadridwansurya/api-go/dto"
 	"github.com/muhammadridwansurya/api-go/helpers"
 	"github.com/muhammadridwansurya/api-go/model"
 	repo "github.com/muhammadridwansurya/api-go/repository"
 )
 
-// -------------------------------------------------------------------
-// Konfigurasi JWT sederhana.
-// Idealnya secret & expiry di‑inject via env / config.
-// -------------------------------------------------------------------
-
 const (
-	jwtExpiryInMinutes = 60 // ✅ bisa jadi const atau var
+	jwtExpiryInMinutes = 60
 )
-
-// -------------------------------------------------------------------
-// Interface Service
-// -------------------------------------------------------------------
 
 type AuthServiceInterface interface {
 	Register(ctx context.Context, req *dto.RegisterRequest) (*model.User, error)
 	Login(ctx context.Context, req *dto.LoginRequest) (*model.User, string, error)
 	Logout(ctx context.Context, userID string) error
 	GetProfile(ctx context.Context, userID string) (*model.User, error)
+	VerifyEmail(ctx context.Context, req *dto.VerifyEmailRequest) error
 }
-
-// -------------------------------------------------------------------
-// Implementasi Service
-// -------------------------------------------------------------------
-
 type authService struct {
 	repo repo.AuthRepositoryInterface
 }
@@ -46,16 +33,35 @@ func InitAuthService(r repo.AuthRepositoryInterface) AuthServiceInterface {
 	return &authService{repo: r}
 }
 
-// -------------------------------------------------------------------
-// Register
-// -------------------------------------------------------------------
 func (s *authService) Register(ctx context.Context, req *dto.RegisterRequest) (*model.User, error) {
-	return s.repo.Register(ctx, req)
+	user, err := s.repo.Register(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	if user.Email != nil {
+		token, err := GenerateEmailVerificationToken(user.ID, *user.Email)
+		if err != nil {
+			fmt.Printf("gagal generate token verifikasi email: %v\n", err)
+		} else {
+			go helpers.SendEmailVerification(*user.Email, token)
+		}
+	}
+
+	return user, nil
 }
 
-// -------------------------------------------------------------------
-// Login
-// -------------------------------------------------------------------
+func GenerateEmailVerificationToken(userID, email string) (string, error) {
+	claims := jwt.MapClaims{
+		"user_id": userID,
+		"email":   email,
+		"exp":     time.Now().Add(1 * time.Hour).Unix(),
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(os.Getenv("JWT_EMAIL_SECRET")))
+}
+
 func (s *authService) Login(ctx context.Context, req *dto.LoginRequest) (*model.User, string, error) {
 	user, err := s.repo.Login(ctx, req)
 	if err != nil {
@@ -67,24 +73,16 @@ func (s *authService) Login(ctx context.Context, req *dto.LoginRequest) (*model.
 		return nil, "", fmt.Errorf("gagal membuat token: %w", err)
 	}
 
-	// Simpan token sebagai remember_token (opsional). Tidak menggagalkan login.
 	if err := s.repo.UpdateRememberToken(ctx, user.ID, &tokenStr); err != nil {
-		// TODO: log error jika diperlukan
 	}
 
 	return user, tokenStr, nil
 }
 
-// -------------------------------------------------------------------
-// Logout  →  kosongkan remember_token
-// -------------------------------------------------------------------
 func (s *authService) Logout(ctx context.Context, userID string) error {
 	return s.repo.Logout(ctx, userID)
 }
 
-// -------------------------------------------------------------------
-// Get profile (by JWT claims → userID)
-// -------------------------------------------------------------------
 func (s *authService) GetProfile(ctx context.Context, userID string) (*model.User, error) {
 	if userID == "" {
 		return nil, fmt.Errorf("user ID tidak valid")
@@ -92,9 +90,23 @@ func (s *authService) GetProfile(ctx context.Context, userID string) (*model.Use
 	return s.repo.GetUserByID(ctx, userID)
 }
 
-// -------------------------------------------------------------------
-// Helper: JWT generator
-// -------------------------------------------------------------------
+func (s *authService) VerifyEmail(ctx context.Context, req *dto.VerifyEmailRequest) error {
+	claims := jwt.MapClaims{}
+
+	token, err := jwt.ParseWithClaims(req.Token, claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte(os.Getenv("JWT_EMAIL_SECRET")), nil
+	})
+	if err != nil || !token.Valid {
+		return fmt.Errorf("token verifikasi tidak valid")
+	}
+
+	email, ok := claims["email"].(string)
+	if !ok || email == "" {
+		return fmt.Errorf("email dalam token tidak valid")
+	}
+
+	return s.repo.VerifyEmail(ctx, &dto.VerifyEmailRequest{Token: email})
+}
 
 func generateJWT(userID string) (string, error) {
 	now := time.Now()
@@ -109,22 +121,15 @@ func generateJWT(userID string) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	// Verify the unsigned token looks correct
-	unsignedToken, _ := token.SigningString()
-	fmt.Printf("Unsigned token parts: %v\n", strings.Split(unsignedToken, "."))
-
 	signedToken, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
 	if err != nil {
 		return "", fmt.Errorf("failed to sign token: %w", err)
 	}
 
-	// Verify the signed token structure
 	parts := strings.Split(signedToken, ".")
 	if len(parts) != 3 {
 		return "", fmt.Errorf("generated token has %d parts, expected 3", len(parts))
 	}
 
-	fmt.Printf("Generated token: %s\n", signedToken)
 	return signedToken, nil
 }

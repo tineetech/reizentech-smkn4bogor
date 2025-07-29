@@ -9,29 +9,19 @@ import (
 	"github.com/muhammadridwansurya/api-go/model"
 )
 
-// -------------------------------------------------------------------
-// Interface repository Users
-// -------------------------------------------------------------------
 type UserRepositoryInterface interface {
 	GetDaftarUsers(ctx context.Context) ([]model.User, error)
 	GetUserByID(ctx context.Context, userID string) (*model.User, error)
-	InsertUser(ctx context.Context, data *dto.UserRequest) (*model.User, error)
 	UpdateUser(ctx context.Context, userID string, data *dto.UserRequest) (*model.User, error)
 	DeleteUser(ctx context.Context, userID string) (*model.User, error)
 }
 
-// -------------------------------------------------------------------
-// Implementasi repository
-// -------------------------------------------------------------------
 type userRepository struct{ db *sql.DB }
 
 func InitUserRepository(db *sql.DB) UserRepositoryInterface {
 	return &userRepository{db: db}
 }
 
-// -------------------------------------------------------------------
-// Ambil semua user (tanpa password & remember_token)
-// -------------------------------------------------------------------
 func (r *userRepository) GetDaftarUsers(ctx context.Context) ([]model.User, error) {
 	var users []model.User
 
@@ -61,9 +51,6 @@ func (r *userRepository) GetDaftarUsers(ctx context.Context) ([]model.User, erro
 	return users, nil
 }
 
-// -------------------------------------------------------------------
-// Ambil user by ID
-// -------------------------------------------------------------------
 func (r *userRepository) GetUserByID(ctx context.Context, id string) (*model.User, error) {
 	q := fmt.Sprintf(`
 		SELECT id, username, email, email_verified_at,
@@ -83,47 +70,6 @@ func (r *userRepository) GetUserByID(ctx context.Context, id string) (*model.Use
 	return u, nil
 }
 
-// -------------------------------------------------------------------
-// Insert user
-// -------------------------------------------------------------------
-func (r *userRepository) InsertUser(ctx context.Context, d *dto.UserRequest) (*model.User, error) {
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback()
-
-	q := fmt.Sprintf(`
-		INSERT INTO %s
-		    (username, email, phone_number, password,
-		     status, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
-		RETURNING id, username, email, email_verified_at,
-		          phone_number, phone_number_verified_at,
-		          status, created_at, updated_at
-	`, model.TableUser)
-
-	row := tx.QueryRowContext(ctx, q,
-		d.Username,
-		sql.NullString{String: d.Email, Valid: d.Email != ""},
-		sql.NullString{String: d.PhoneNumber, Valid: d.PhoneNumber != ""},
-		d.PasswordHash,
-		d.Status,
-	)
-	u, err := scanUserRow(row)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := tx.Commit(); err != nil {
-		return nil, err
-	}
-	return u, nil
-}
-
-// -------------------------------------------------------------------
-// Update user (support reset field ke NULL)
-// -------------------------------------------------------------------
 func (r *userRepository) UpdateUser(ctx context.Context, id string, d *dto.UserRequest) (*model.User, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -131,7 +77,6 @@ func (r *userRepository) UpdateUser(ctx context.Context, id string, d *dto.UserR
 	}
 	defer tx.Rollback()
 
-	// Build dynamic query (password optional)
 	base := fmt.Sprintf(`
 		UPDATE %s SET
 		  username     = $1,
@@ -165,9 +110,6 @@ func (r *userRepository) UpdateUser(ctx context.Context, id string, d *dto.UserR
 	return u, tx.Commit()
 }
 
-// -------------------------------------------------------------------
-// Delete user
-// -------------------------------------------------------------------
 func (r *userRepository) DeleteUser(ctx context.Context, id string) (*model.User, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -186,9 +128,6 @@ func (r *userRepository) DeleteUser(ctx context.Context, id string) (*model.User
 	return u, tx.Commit()
 }
 
-// -------------------------------------------------------------------
-// Helper scan (bekerja utk sql.Row & sql.Rows)
-// -------------------------------------------------------------------
 type scanner interface {
 	Scan(dest ...any) error
 }

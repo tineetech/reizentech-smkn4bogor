@@ -1,24 +1,11 @@
-// file: model/user_level.go
 package model
 
 import (
 	"time"
 )
 
-/*
-	------------------------------------------------------------------
-	  Konstanta tabel ‑ memudahkan kalau nanti skema berubah.
-
-------------------------------------------------------------------
-*/
 const TableUserLevel = "user_level"
 
-/*
-	------------------------------------------------------------------
-	  Struct entity ‑ hanya tag json & db (opsional untuk sqlx/StructScan)
-
-------------------------------------------------------------------
-*/
 type UserLevel struct {
 	ID            string    `json:"id"               db:"id"`
 	BiodataRefID  int64     `json:"biodata_ref_id"   db:"biodata_ref_id"`
